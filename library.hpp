@@ -27,7 +27,7 @@
 #define rep1(i,n) for(ll (i)=1; (i)<=(n); (i)++)
 #define rep3(i,s,n) for(ll (i)=(s); (i)<(n); (i)++)
 
-#define NDEBUG
+//#define NDEBUG
 
 #ifndef NDEBUG
 #define ASSERT(expr, ...) \
@@ -54,12 +54,12 @@ using namespace std;
 using ll = long long;
 constexpr double PI = 3.1415926535897932;
 
-template<class T, class S> inline bool chmin(T & m, S q) {
+template<class T, class S> inline bool chmin(T& m, S q) {
 	if (m > q) { m = q; return true; }
 	else return false;
 }
 
-template<class T, class S> inline bool chmax(T & m, const S q) {
+template<class T, class S> inline bool chmax(T& m, const S q) {
 	if (m < q) { m = q; return true; }
 	else return false;
 }
@@ -213,7 +213,7 @@ template<class T, int max_size> struct Queue {
 	inline Queue() : data(), left(0), right(0) {}
 	inline Queue(initializer_list<T> init) :
 		data(init.begin(), init.end()), left(0), right(init.size()) {}
- 
+
 	inline bool empty() const {
 		return left == right;
 	}
@@ -245,7 +245,7 @@ template<class T, int max_size> struct Queue {
 template<class T, int max_size> struct Stack {
 	array<T, max_size> data;
 	int right;
- 
+
 	inline Stack() : data(), right(0) {}
 	inline Stack(const int n) : data(), right(0) { resize(n); }
 	inline Stack(const int n, const T& val) : data(), right(0) { resize(n, val); }
@@ -337,7 +337,7 @@ template<class T, int max_size> struct Stack {
 		ASSERT(right > 0, "no data.");
 		return data[right - 1];
 	}
-	
+
 	inline vector<T> ToVector() {
 		return vector<T>(begin(), end());
 	}
@@ -359,72 +359,4 @@ template<typename T> inline void deduplicate(vector<T>& vec) {
 
 template<typename T> inline int search_sorted(const vector<T>& vec, const T& a) {
 	return lower_bound(vec.begin(), vec.end(), a) - vec.begin();
-}
-
-
-// 焼きなまし
-template<class State> struct SimulatedAnnealing {
-	State* state;
-	Random* rng;
-	double best_score;
-	State best_state;
-
-	inline SimulatedAnnealing(State& arg_state, Random& arg_rng) :
-		state(&arg_state), rng(&arg_rng), best_score(1e9) {}
-
-	template<double (*temperature_schedule)(const double&)> void optimize(const double time_limit) {
-		const double t0 = time();
-		double old_score = state->score;
-		int iteration = 0;
-		while (true) {
-			iteration++;
-			const double t = time() - t0;
-			if (t > time_limit) break;
-			const double progress_rate = t / time_limit;
-
-			state->update();
-			state->calc_score(progress_rate);
-			const double new_score = state->score;
-			if (chmin(best_score, new_score)) {
-				//cout << "upd! new_score=" << new_score << " progress=" << progress_rate << endl;
-				best_state = *state;  // 中にポインタがある場合などは注意する
-			}
-			const double gain = old_score - new_score;  // 最小化: 良くなったらプラス
-			const double temperature = temperature_schedule(t);
-			const double acceptance_proba = exp(gain / temperature);
-			if (acceptance_proba > rng->random()) {
-				// 遷移する
-				old_score = new_score;
-			}
-			else {
-				// 遷移しない（戻す）
-				state->undo();
-			}
-		}
-		*state = best_state;  // 中にポインタがある場合などは注意する
-	}
-};
-
-
-inline double sigmoid(const double& a, const double& x) {
-	return 1.0 / (1.0 + exp(-a * x));
-}
-
-// f: [0, 1] -> [0, 1]
-inline double monotonically_increasing_function(const double& a, const double& b, const double& x) {
-	ASSERT(b >= 0.0, "parameter `b` should be positive.");
-	// a は -10 ～ 10 くらいまで、 b は 0 ～ 10 くらいまで探せば良さそう
-
-	if (a == 0) return x;
-	const double x_left = a > 0 ? -b - 0.5 : b - 0.5;
-	const double x_right = x_left + 1.0;
-	const double left = sigmoid(a, x_left);
-	const double right = sigmoid(a, x_right);
-	const double y = sigmoid(a, x + x_left);
-	return (y - left) / (right - left);  // left とかが大きい値になると誤差がヤバイ　最悪 0 除算になる  // b が正なら大丈夫っぽい
-}
-
-// f: [0, 1] -> [start, end]
-inline double monotonic_function(const double& start, const double& end, const double& a, const double& b, const double& x) {
-	return monotonically_increasing_function(a, b, x) * (end - start) + start;
 }

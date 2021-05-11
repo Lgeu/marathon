@@ -1,8 +1,8 @@
+//#include <unistd.h>
 #include "library.hpp"
 #include "beam_search.hpp"
 
 using namespace std;
-
 namespace Chokudai005 {
     struct Input {
         int id, N, K;
@@ -15,6 +15,14 @@ namespace Chokudai005 {
                     cin >> S[y][x];
                     S[y][x] -= '1';
                 }
+            }
+        }
+        void print() {
+            rep(y, N) {
+                rep(x, N) {
+                    cout << (int)S[y][x];
+                }
+                cout << endl;
             }
         }
     };
@@ -64,16 +72,25 @@ namespace Chokudai005 {
 
         template<int max_n_next_states>
         bool GetNextStates(Stack<State::NewStateInfo, max_n_next_states>& next_states) {
+            if (turn < 30) {
+                //cout << "GetNextStates" << " score=" << score << " turn=" << turn << endl;
+            }
             for (char c = 0; c < 9; c++) {
                 next_states.push({
                     (double)(-turn + score + queues[c].size()),  // このスコアは少し嘘だが…？
                     Action{c}
-                });
+                    });
             }
             return score == input.N * input.N;
         }
 
-        pair<Patch, ReversePatch> Do(const Action & action) {
+        pair<Patch, ReversePatch> Do(const Action& action) {
+            if (turn < 30) {//cout << "Do" << endl;
+                for (auto& q : queues) {
+                    //cout << q.size() << " ";
+                }
+                //cout << endl;
+            }
             // 探索済み部分に隣接する action.color の色のマスを再帰的に吸収し、
             // 吸収したマスに隣接する部分を新たにキューに加える
             const auto& color = action.color;
@@ -93,15 +110,18 @@ namespace Chokudai005 {
                 int y = yx / N, x = yx % N;
                 const int c = input.S[y][x];
                 if (c == color) {  // 新たに吸収
+                    if (turn < 30) {//cout << "Do-kyushu" << endl;
+                    }
                     reverse_patch.done.emplace_back(yx, done[yx]);
                     done[yx] = 2;  // -
                     patch.done.emplace_back(yx, done[yx]);
                     score++;  // -
                     if (x != 0) stk.push(yx - 1);
-                    if (x != 99) stk.push(yx + 1);
+                    if (x != N - 1) stk.push(yx + 1);
                     if (y != 0) stk.push(yx - N);
-                    if (y != 99) stk.push(yx + N);
-                } else if (done[yx] == 0) {  // 新たに隣接した違う色のマス
+                    if (y != N - 1) stk.push(yx + N);
+                }
+                else if (done[yx] == 0) {  // 新たに隣接した違う色のマス
                     reverse_patch.done.emplace_back(yx, done[yx]);
                     done[yx] = 1;  // -
                     patch.done.emplace_back(yx, done[yx]);
@@ -116,6 +136,7 @@ namespace Chokudai005 {
         }
 
         void Redo(const Patch& patch) {
+            //cout << "Redo" << endl;
             answer.push(patch.color);
             queues[patch.color].clear();
             for (const auto& t : patch.done) {
@@ -126,13 +147,18 @@ namespace Chokudai005 {
             }
             score = patch.score;
             turn++;
-
         }
 
         void Undo(const ReversePatch& reverse_patch) {
+            //cout << "Undo" << endl;
             answer.pop();
             for (const auto& t : reverse_patch.done) {
+                ASSERT_RANGE(t.first, 0, done.right);
                 done[t.first] = t.second;
+            }
+            if (turn < 30) {//cout << "Undo-queues ";
+              //for(const auto& cnt : reverse_patch.q_count) cout << cnt << " ";
+              //cout << endl;
             }
             for (char c = 0; c < 9; c++) {
                 for (int i = 0; i < reverse_patch.q_count[c]; i++) {
@@ -144,6 +170,7 @@ namespace Chokudai005 {
             turn--;
         }
 
+
     };
 
 }  // namespace Chokudai005
@@ -153,9 +180,15 @@ int main() {
     Chokudai005::Input input;
     input.read();
     const Chokudai005::State state(input);
+    //input.print();
     ChokudaiSearch<Chokudai005::State, 10000> s(state);
-    s.Search(time_limit, 10000);
+    s.Search(2.4, 10000);
+    //cout << "best score = " << s.best_state.score << " " << (s.best_state.ptr_node==nullptr) << endl;
+    auto stt = s.BestState();
     auto path = s.BestStatePath();
+    //cout << stt.score << " " << stt.turn << " " << endl;
+      //cout << "n_nodes=" << s.tree.nodes->size() << endl;
+
     cout << path.size() - 1 << endl;
     for (auto it = path.begin() + 1; it != path.end(); it++) {
         cout << input.N / 2 + 1 << " " << input.N / 2 + 1 << " " << (int)it->color + 1 << endl;
