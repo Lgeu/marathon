@@ -1,4 +1,4 @@
-using namespace std;
+﻿using namespace std;
 
 template<class State, int max_depth>
 struct SearchTree {
@@ -51,7 +51,7 @@ struct SearchTree {
     };
 
     State current_state;
-    Stack<Node, (int)3e6>* nodes;  // 追加したら動かさない・消さない  // 実体だとセグフォる…  // 確保に時間かかってる？
+    Stack<Node, (int)1e6>* nodes;  // 追加したら動かさない・消さない  // 実体だとセグフォる…  // 確保に時間かかってる？
     Node* ptr_current_node;
     Stack<Node*, max_depth> path_to_redo;
 
@@ -60,7 +60,7 @@ struct SearchTree {
         current_state(initial_state),
         nodes(),
         ptr_current_node() {
-        nodes = new Stack<Node, (int)3e6>(1);
+        nodes = new Stack<Node, (int)1e6>(1);
         ptr_current_node = &(nodes->operator[](0));
     }
     inline ~SearchTree() {

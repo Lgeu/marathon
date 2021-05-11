@@ -177,17 +177,17 @@ namespace Chokudai005 {
 
 
 int main() {
-    Chokudai005::Input input;
+    static Chokudai005::Input input;
     input.read();
-    const Chokudai005::State state(input);
+    static const Chokudai005::State state(input);
     //input.print();
-    ChokudaiSearch<Chokudai005::State, 10000> s(state);
+    static ChokudaiSearch<Chokudai005::State, 10000> s(state);
     s.Search(2.4, 10000);
     //cout << "best score = " << s.best_state.score << " " << (s.best_state.ptr_node==nullptr) << endl;
-    auto stt = s.BestState();
-    auto path = s.BestStatePath();
+    static auto stt = s.BestState();
+    static auto path = s.BestStatePath();
     //cout << stt.score << " " << stt.turn << " " << endl;
-      //cout << "n_nodes=" << s.tree.nodes->size() << endl;
+    //cout << "n_nodes=" << s.tree.nodes->size() << endl;
 
     cout << path.size() - 1 << endl;
     for (auto it = path.begin() + 1; it != path.end(); it++) {
