@@ -1,4 +1,3 @@
-//#include <unistd.h>
 #include "library.hpp"
 #include "beam_search.hpp"
 
@@ -72,9 +71,6 @@ namespace Chokudai005 {
 
         template<int max_n_next_states>
         bool GetNextStates(Stack<State::NewStateInfo, max_n_next_states>& next_states) {
-            if (turn < 30) {
-                //cout << "GetNextStates" << " score=" << score << " turn=" << turn << endl;
-            }
             for (char c = 0; c < 9; c++) {
                 next_states.push({
                     (double)(-turn + score + queues[c].size()),  // このスコアは少し嘘だが…？
@@ -85,12 +81,6 @@ namespace Chokudai005 {
         }
 
         pair<Patch, ReversePatch> Do(const Action& action) {
-            if (turn < 30) {//cout << "Do" << endl;
-                for (auto& q : queues) {
-                    //cout << q.size() << " ";
-                }
-                //cout << endl;
-            }
             // 探索済み部分に隣接する action.color の色のマスを再帰的に吸収し、
             // 吸収したマスに隣接する部分を新たにキューに加える
             const auto& color = action.color;
@@ -136,7 +126,6 @@ namespace Chokudai005 {
         }
 
         void Redo(const Patch& patch) {
-            //cout << "Redo" << endl;
             answer.push(patch.color);
             queues[patch.color].clear();
             for (const auto& t : patch.done) {
@@ -150,15 +139,10 @@ namespace Chokudai005 {
         }
 
         void Undo(const ReversePatch& reverse_patch) {
-            //cout << "Undo" << endl;
             answer.pop();
             for (const auto& t : reverse_patch.done) {
                 ASSERT_RANGE(t.first, 0, done.right);
                 done[t.first] = t.second;
-            }
-            if (turn < 30) {//cout << "Undo-queues ";
-              //for(const auto& cnt : reverse_patch.q_count) cout << cnt << " ";
-              //cout << endl;
             }
             for (char c = 0; c < 9; c++) {
                 for (int i = 0; i < reverse_patch.q_count[c]; i++) {
@@ -169,8 +153,6 @@ namespace Chokudai005 {
             score = reverse_patch.score;
             turn--;
         }
-
-
     };
 
 }  // namespace Chokudai005
