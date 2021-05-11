@@ -1,5 +1,3 @@
-// メモ: 未整理の utils は https://atcoder.jp/contests/ahc001/submissions/20928259
-
 #include<iostream>
 #include<iomanip>
 #include<vector>
@@ -20,6 +18,8 @@
 #include<ctime>
 #include<string>
 #include<sstream>
+#include<chrono>
+#include<climits>
 
 // ========================== macroes ==========================
 
@@ -248,9 +248,10 @@ template<class T, int max_size> struct Stack {
  
 	inline Stack() : data(), right(0) {}
 	inline Stack(const int n) : data(), right(0) { resize(n); }
+	inline Stack(const int n, const T& val) : data(), right(0) { resize(n, val); }
 	inline Stack(initializer_list<T> init) :
 		data(init.begin(), init.end()), right(init.size()) {}
-	inline Stack(const Stack& rhs) : data(), right(rhs.right) {
+	inline Stack(const Stack& rhs) : data(), right(rhs.right) {  // コピー
 		for (int i = 0; i < right; i++) {
 			data[i] = rhs.data[i];
 		}
@@ -259,6 +260,14 @@ template<class T, int max_size> struct Stack {
 		right = rhs.right;
 		for (int i = 0; i < right; i++) {
 			data[i] = rhs.data[i];
+		}
+		return *this;
+	}
+	Stack& operator=(const vector<T>& rhs) {
+		right = (int)rhs.size();
+		ASSERT(right <= max_size, "too big vector");
+		for (int i = 0; i < right; i++) {
+			data[i] = rhs[i];
 		}
 		return *this;
 	}
@@ -271,9 +280,10 @@ template<class T, int max_size> struct Stack {
 		data[right] = value;
 		right++;
 	}
-	inline void pop() {
+	inline T pop() {
 		right--;
 		ASSERT_RANGE(right, 0, max_size);
+		return data[right];
 	}
 	const inline T& top() const {
 		return data[right - 1];
@@ -289,14 +299,16 @@ template<class T, int max_size> struct Stack {
 	inline void resize(const int& sz) {
 		ASSERT_RANGE(sz, 0, max_size + 1);
 		for (; right < sz; right++) {
-			data[right] = T();
+			data[right].~T();
+			new(&data[right]) T();
 		}
 		right = sz;
 	}
 	inline void resize(const int& sz, const T& fill_value) {
 		ASSERT_RANGE(sz, 0, max_size + 1);
 		for (; right < sz; right++) {
-			data[right] = fill_value;
+			data[right].~T();
+			new(&data[right]) T(fill_value);
 		}
 		right = sz;
 	}
@@ -317,10 +329,22 @@ template<class T, int max_size> struct Stack {
 	inline T* end() {
 		return (T*)data.data() + right;
 	}
+	inline T* front() {
+		ASSERT(right > 0, "no data.");
+		return data[0];
+	}
+	inline T& back() {
+		ASSERT(right > 0, "no data.");
+		return data[right - 1];
+	}
+	
+	inline vector<T> ToVector() {
+		return vector<T>(begin(), end());
+	}
 };
 
 
-// 時間
+// 時間 (秒)
 inline double time() {
 	return static_cast<double>(chrono::duration_cast<chrono::nanoseconds>(chrono::steady_clock::now().time_since_epoch()).count()) * 1e-9;
 }
@@ -349,7 +373,6 @@ template<class State> struct SimulatedAnnealing {
 		state(&arg_state), rng(&arg_rng), best_score(1e9) {}
 
 	template<double (*temperature_schedule)(const double&)> void optimize(const double time_limit) {
-		T0 = time(); TIMES = 0.0;
 		const double t0 = time();
 		double old_score = state->score;
 		int iteration = 0;
@@ -405,18 +428,3 @@ inline double monotonically_increasing_function(const double& a, const double& b
 inline double monotonic_function(const double& start, const double& end, const double& a, const double& b, const double& x) {
 	return monotonically_increasing_function(a, b, x) * (end - start) + start;
 }
-
-inline double annealing_temperature_schedule(const double& x) {
-	constexpr double start = ANNEALING_START;
-	constexpr double end = ANNEALING_END;
-
-	constexpr double a = ANNEALING_A;
-	constexpr double b = ANNEALING_B;
-	//return monotonic_function(start, end, a, b, x < 1.0/3.0 ? x * 3.0 : x < 2.0/3.0 ? x * 3.0 - 1.0 : x * 3.0 - 2.0);
-	//return monotonic_function(start, end, a, b, x < 0.5 ? x * 2.0 : x * 2.0 - 1.0);
-	return monotonic_function(start, end, a, b, x);
-}
-
-
-
-
