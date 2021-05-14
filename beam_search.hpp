@@ -95,7 +95,6 @@ struct SearchTree {
             current_state.Undo(ptr_current_node->reverse_patch);
             ptr_current_node = ptr_current_node->ptr_parent;
         }
-        //ASSERT_RANGE(0, 0, path_to_redo.size());
         if (!path_to_redo.empty()) {
             ptr_current_node = path_to_redo[0];
             while (!path_to_redo.empty()) {
@@ -137,8 +136,11 @@ struct SearchTree {
 };
 
 template<class State, int max_n_turns>
-struct ChokudaiSearch {
-    // デフォルトは最大化
+struct ColunChokudaiSearch {
+    // ・(状態 x 行動) にスコアを持つ
+    // ・inplace に状態を変更
+    // ・最大化
+    // ・1 つ先の状態にのみ遷移
 
     struct Candidate {
         double score;
@@ -159,7 +161,7 @@ struct ChokudaiSearch {
     Stack<typename State::NewStateInfo, 10000> next_states;
     Candidate best_state;
 
-    inline ChokudaiSearch(const State& initial_state) :  // 終わるターン数が同じ場合はこれでいいけど…？ // state.act が終端状態を返すのでこれを使う(TODO)
+    inline ColunChokudaiSearch(const State& initial_state) :
         candidates(max_n_turns + 1),
         tree(initial_state),
         best_state{ -1e300, nullptr }
@@ -203,5 +205,70 @@ struct ChokudaiSearch {
 
 };
 
+
+template<class State>
 struct BeamSearch {
+    // ・状態にスコアを持つ
+    // ・(状態 x 行動) を直接キューに溜め込む
+    // ・最大化
+    // ・1 つ先の状態にのみ遷移
+    // ・ハッシュで類似状態除去しない
+    struct Candidate {
+        double score;
+        State* ptr_parent_state;
+        typename State::Action action;
+        inline Candidate() : score(0.0), ptr_parent_state(nullptr), action() {}
+        inline Candidate(const double& a_score, State* const a_ptr_parent_state, const typename State::Action a_action) :
+            score(a_score), ptr_parent_state(a_ptr_parent_state), action(a_action) {}
+        inline bool operator<(const Candidate& rhs) const {
+            return score < rhs.score;
+        }
+        inline bool operator>(const Candidate& rhs) const {
+            return score > rhs.score;
+        }
+    };
+    Stack<Candidate, 200000> candidates;
+    State best_state;
+    Stack<typename State::NewStateInfo, 10000> next_states;
+    array<Stack<State, 2300>, 2> parent_states;  // ビーム幅以上
+    inline BeamSearch(const State& initial_state) :
+        candidates(), best_state(initial_state), next_states(), parent_states()
+    {
+        best_state.score = -1e300;
+        parent_states[0].push(initial_state);
+    }
+    inline void Search() {
+        int beam_width = 2300;
+        for (int depth = 0;; depth++) {
+            if (beam_width == 0) break;
+            for (int i = 0; i < parent_states[depth % 2].size(); i++) {
+                auto& parent_state = parent_states[depth % 2][i];
+                parent_state.GetNextStates(next_states);
+                for (const auto& r : next_states) {
+                    candidates.emplace(r.score, &parent_state, r.action);
+                }
+                next_states.clear();
+            }
+            if (candidates.size() == 0) break;
+            if (beam_width < candidates.size()) {
+                nth_element(candidates.begin(), candidates.begin() + beam_width, candidates.end(), std::greater<>());
+                candidates.resize(beam_width);
+            }
+            parent_states[(depth + 1) % 2].resize(candidates.size());
+            for (int i = 0; i < candidates.size(); i++) {
+                auto& candidate = candidates[i];
+                auto& state = parent_states[(depth + 1) % 2][i];
+                state = *candidate.ptr_parent_state;
+                state.Do(candidate.action);
+                if (state.termination) {
+                    if (best_state.score < state.score) best_state = state;
+                    beam_width--;
+                }
+            }
+            candidates.clear();
+        }
+    }
+    inline State BestState() {
+        return best_state;
+    }
 };

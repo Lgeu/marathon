@@ -155,24 +155,156 @@ namespace Chokudai005 {
         }
     };
 
+    void solve() {
+        static Chokudai005::Input input;
+        input.read();
+        static const Chokudai005::State state(input);
+        static ColunChokudaiSearch<Chokudai005::State, 10000> s(state);
+        s.Search(2.4, 10000);
+        static auto stt = s.BestState();
+        static auto path = s.BestStatePath();
+        //cout << stt.score << " " << stt.turn << " " << endl;
+        //cout << "n_nodes=" << s.tree.nodes->size() << endl;
+        cout << path.size() - 1 << endl;
+        for (auto it = path.begin() + 1; it != path.end(); it++) {
+            cout << input.N / 2 + 1 << " " << input.N / 2 + 1 << " " << (int)it->color + 1 << endl;
+        }
+    }
 }  // namespace Chokudai005
 
 
-int main() {
-    static Chokudai005::Input input;
-    input.read();
-    static const Chokudai005::State state(input);
-    //input.print();
-    static ChokudaiSearch<Chokudai005::State, 10000> s(state);
-    s.Search(2.4, 10000);
-    //cout << "best score = " << s.best_state.score << " " << (s.best_state.ptr_node==nullptr) << endl;
-    static auto stt = s.BestState();
-    static auto path = s.BestStatePath();
-    //cout << stt.score << " " << stt.turn << " " << endl;
-    //cout << "n_nodes=" << s.tree.nodes->size() << endl;
+namespace RCO2018QualA {
+    struct Input {
+        int N, K, H, W, T;
+        array<array<array<char, 50>, 50>, 100> stage;
+        array<Vec2<signed char>, 100> initial_players;
+        void Read() {
+            cin >> N >> K >> H >> W >> T;
+            for (int i = 0; i < 100; i++) {
+                for (int y = 0; y < 50; y++) {
+                    string s;
+                    cin >> s;
+                    for (int x = 0; x < 50; x++) {
+                        stage[i][y][x] = s[x];
+                        if (s[x] == '@') initial_players[i] = Vec2<signed char>(y, x);
+                    }
+                }
+            }
+        }
+    };
 
-    cout << path.size() - 1 << endl;
-    for (auto it = path.begin() + 1; it != path.end(); it++) {
-        cout << input.N / 2 + 1 << " " << input.N / 2 + 1 << " " << (int)it->color + 1 << endl;
+    Input input;
+
+    template<int h=50, int w=50>
+    struct BitBoard {
+        bitset<h * w> data;
+        inline BitBoard() = default;
+        inline bool Get(const Vec2<signed char>& p) const {
+            return data[(int)p.y * 50 + (int)p.x];
+        }
+        inline void Set(const Vec2<signed char>& p, const bool& val) {
+            data[(int)p.y * 50 + (int)p.x] = val;
+        }
+    };
+
+    struct Command {
+        bitset<2500 * 2> data;
+        inline Command() = default;
+        inline void Set(const int& idx, const int& val) {
+            ASSERT_RANGE(idx, 0, 2500);
+            ASSERT_RANGE(val, 0, 4);
+            data[idx * 2] = val & 1;
+            data[idx * 2 + 1] = val >> 1;
+        }
+        inline void Print() const {
+            for (int i = 0; i < 2500; i++) {
+                cout << "DRUL"[(int)data[i * 2 + 1] << 1 | (int)data[i * 2]];
+            }
+            cout << endl;
+        }
+    };
+
+    struct State {
+        double score;
+        bool termination;
+        short turn;
+        array<BitBoard<>, 8> visited;
+        array<Vec2<signed char>, 8> players;
+        Command command;
+
+        inline State() :
+            score(0.0), termination(false), turn(0), visited(), players(), command()
+        {
+            for (int i = 0; i < 8; i++) {
+                players[i] = input.initial_players[i];
+            }
+        }
+        struct Action {
+            signed char d;
+        };
+        struct NewStateInfo {
+            double score;
+            Action action;
+        };
+        constexpr static array<Vec2<signed char>, 4> dyxs{ Vec2<signed char>{1, 0}, {0, 1}, {-1, 0}, {0, -1} };
+        inline void GetNextStates(Stack<NewStateInfo, 10000>& res) {
+            for (signed char d = 0; d < 4; d++) {
+                const auto& dyx = dyxs[d];
+                double new_score = score;
+                for (int idx_board = 0; idx_board < visited.size(); idx_board++) {
+                    const auto& visite = visited[idx_board];
+                    const auto& player = players[idx_board];
+                    const auto uyx = player + dyx;
+                    if (input.stage[idx_board][uyx.y][uyx.x] == 'x') goto brcon;
+                    if (input.stage[idx_board][uyx.y][uyx.x] == 'o') {
+                        if (!visite.Get(uyx)) {
+                            new_score++;
+                        }
+                    }
+                }
+                res.push({ new_score, Action{ d } });
+            brcon:;
+            }
+        }
+        inline void Do(const Action& action) {
+            const auto& dyx = dyxs[action.d];
+            for (int idx_board = 0; idx_board < visited.size(); idx_board++) {
+                auto& visite = visited[idx_board];
+                auto& player = players[idx_board];
+                const auto uyx = player + dyx;
+                if (input.stage[idx_board][uyx.y][uyx.x] != '#') {
+                    player = uyx;
+                }
+                if (input.stage[idx_board][uyx.y][uyx.x] == 'o') {
+                    if (!visite.Get(uyx)) {
+                        score++;
+                        visite.Set(uyx, true);
+                    }
+                }
+            }
+            command.Set(turn, action.d);
+            turn++;
+            if (turn == 2500) termination = true;
+        }
+        inline void PrintAnswer() const {
+            for (int i = 0; i < 8; i++) {
+                cout << i << " \n"[i == 7];
+            }
+            command.Print();
+        }
+    };
+
+
+    void Solve() {
+        input.Read();
+        static State initial_state;
+        static BeamSearch<State> beam_search(initial_state);
+        beam_search.Search();
+        beam_search.BestState().PrintAnswer();
+        //cout << beam_search.BestState().score << endl;
     }
+}
+
+int main() {
+    RCO2018QualA::Solve();
 }
