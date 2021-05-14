@@ -272,3 +272,79 @@ struct BeamSearch {
         return best_state;
     }
 };
+
+template<class State, int hash_table_size=26>
+struct BeamSearchWithHash {
+    // ・状態にスコアを持つ
+    // ・(状態 x 行動) を直接キューに溜め込む
+    // ・最大化
+    // ・1 つ先の状態にのみ遷移
+    // ・ハッシュで類似状態除去する
+    // ・ハッシュが同じならスコアも同じ
+    struct Candidate {
+        double score;
+        State* ptr_parent_state;
+        typename State::Action action;
+        inline Candidate() : score(0.0), ptr_parent_state(nullptr), action() {}
+        inline Candidate(const double& a_score, State* const a_ptr_parent_state, const typename State::Action a_action) :
+            score(a_score), ptr_parent_state(a_ptr_parent_state), action(a_action) {}
+        inline bool operator<(const Candidate& rhs) const { return score < rhs.score; }
+        inline bool operator>(const Candidate& rhs) const { return score > rhs.score; }
+    };
+
+    // ---------- variables ----------
+    Stack<Candidate, 200000> candidates;
+    State best_state;
+    Stack<typename State::NewStateInfo, 10000> next_states;
+    array<Stack<State, 1200>, 2> parent_states;  // ビーム幅以上
+    bitset<1 << hash_table_size> candidates_contains;  // 2^26 bits == 8 MB
+
+    // ---------- constructors ----------
+    inline BeamSearchWithHash(const State& initial_state) :
+        candidates(), best_state(initial_state), next_states(), parent_states(), candidates_contains()
+    {
+        best_state.score = -1e300;
+        parent_states[0].push(initial_state);
+    }
+
+    // ---------- methods ----------
+    inline void Search(int max_depth=INT_MAX) {
+        int beam_width = 1200;
+        for (int depth = 0; depth < max_depth; depth++) {  // 最終状態に beam_width 個到達しないと RE になる
+            if (beam_width == 0) break;
+            for (int i = 0; i < parent_states[depth % 2].size(); i++) {
+                auto& parent_state = parent_states[depth % 2][i];
+                parent_state.GetNextStates(next_states);
+                for (const auto& r : next_states) {
+                    if (!candidates_contains[r.hash & (1u << hash_table_size) - 1u]) {
+                        candidates.emplace(r.score, &parent_state, r.action);
+                        candidates_contains[r.hash & (1u << hash_table_size) - 1u] = true;
+                    }
+                }
+                next_states.clear();
+            }
+            if (candidates.size() == 0) break;
+            if (beam_width < candidates.size()) {
+                nth_element(candidates.begin(), candidates.begin() + beam_width, candidates.end(), std::greater<>());
+                candidates.resize(beam_width);
+            }
+            parent_states[(depth + 1) % 2].resize(candidates.size());
+            for (int i = 0; i < candidates.size(); i++) {
+                auto& candidate = candidates[i];
+                auto& state = parent_states[(depth + 1) % 2][i];
+                state = *candidate.ptr_parent_state;
+                state.Do(candidate.action);
+                if (state.termination) {
+                    if (best_state.score < state.score) best_state = state;
+                    beam_width--;
+                }
+            }
+            
+            candidates.clear();
+            candidates_contains.reset();
+        }
+    }
+    inline State BestState() {
+        return best_state;
+    }
+};

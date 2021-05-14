@@ -194,6 +194,39 @@ namespace RCO2018QualA {
     };
 
     Input input;
+    array<unsigned, 66000> hashes;
+    constexpr array<Vec2<signed char>, 4> dyxs{ Vec2<signed char>{1, 0}, {0, 1}, {-1, 0}, {0, -1} };
+    array<int, 8> choosen_stages{ 8, 9, 10, 11, 12, 13, 14, 15 };
+
+    void choose_stages() {
+        Random rng(42);
+        array<int, 100> scores{};
+        
+        for (int i = 0; i < 100; i++) {
+            auto stack = Stack<Vec2<signed char>, 2500>();
+            stack.push(input.initial_players[i]);
+            auto closed = array<bitset<50>, 50>();
+            while (!stack.empty()) {
+                auto vyx = stack.pop();
+                for (int d = 0; d < 4; d++) {
+                    const auto& dyx = dyxs[d];
+                    auto uyx = vyx + dyx;
+                    if (input.stage[i][uyx.y][uyx.x] == 'o' && !closed[uyx.y][uyx.x]) {
+                        stack.push(uyx);
+                        scores[i]++;
+                        closed[uyx.y][uyx.x] = true;
+                    }
+                }
+            }
+        }
+
+        auto idxs = array<int, 100>();
+        iota(idxs.begin(), idxs.end(), 0);
+        sort(idxs.begin(), idxs.end(), [&](const int& l, const int& r) { return scores[l] > scores[r]; });
+        for (int i = 0; i < 8; i++) {
+            choosen_stages[i] = idxs[i];
+        }
+    }
 
     template<int h=50, int w=50>
     struct BitBoard {
@@ -227,16 +260,17 @@ namespace RCO2018QualA {
     struct State {
         double score;
         bool termination;
+        signed hash;
         short turn;
         array<BitBoard<>, 8> visited;
         array<Vec2<signed char>, 8> players;
         Command command;
-
+        
         inline State() :
-            score(0.0), termination(false), turn(0), visited(), players(), command()
+            score(0.0), termination(false), hash(0u), turn(0), visited(), players(), command()
         {
             for (int i = 0; i < 8; i++) {
-                players[i] = input.initial_players[i];
+                players[i] = input.initial_players[choosen_stages[i]];
             }
         }
         struct Action {
@@ -245,40 +279,51 @@ namespace RCO2018QualA {
         struct NewStateInfo {
             double score;
             Action action;
+            unsigned hash;
         };
-        constexpr static array<Vec2<signed char>, 4> dyxs{ Vec2<signed char>{1, 0}, {0, 1}, {-1, 0}, {0, -1} };
         inline void GetNextStates(Stack<NewStateInfo, 10000>& res) {
             for (signed char d = 0; d < 4; d++) {
                 const auto& dyx = dyxs[d];
                 double new_score = score;
-                for (int idx_board = 0; idx_board < visited.size(); idx_board++) {
-                    const auto& visite = visited[idx_board];
-                    const auto& player = players[idx_board];
+                unsigned new_hash = hash;
+                for (int i = 0; i < visited.size(); i++) {
+                    int idx_board = choosen_stages[i];
+                    const auto& visite = visited[i];
+                    const auto& player = players[i];
                     const auto uyx = player + dyx;
                     if (input.stage[idx_board][uyx.y][uyx.x] == 'x') goto brcon;
                     if (input.stage[idx_board][uyx.y][uyx.x] == 'o') {
                         if (!visite.Get(uyx)) {
                             new_score++;
+                            new_hash ^= hashes[i << 12 | uyx.y << 6 | uyx.x];
                         }
                     }
+                    if (input.stage[idx_board][uyx.y][uyx.x] != '#') {
+                        new_hash ^= hashes[1 << 15 | i << 12 | uyx.y << 6 | uyx.x]
+                                  ^ hashes[1 << 15 | i << 12 | player.y << 6 | player.x];
+                    }
                 }
-                res.push({ new_score, Action{ d } });
+                res.push({ new_score, Action{ d }, new_hash });
             brcon:;
             }
         }
         inline void Do(const Action& action) {
             const auto& dyx = dyxs[action.d];
-            for (int idx_board = 0; idx_board < visited.size(); idx_board++) {
-                auto& visite = visited[idx_board];
-                auto& player = players[idx_board];
+            for (int i = 0; i < visited.size(); i++) {
+                int idx_board = choosen_stages[i];
+                auto& visite = visited[i];
+                auto& player = players[i];
                 const auto uyx = player + dyx;
                 if (input.stage[idx_board][uyx.y][uyx.x] != '#') {
+                    hash ^= hashes[1 << 15 | i << 12 | uyx.y << 6 | uyx.x]
+                          ^ hashes[1 << 15 | i << 12 | player.y << 6 | player.x];
                     player = uyx;
                 }
                 if (input.stage[idx_board][uyx.y][uyx.x] == 'o') {
                     if (!visite.Get(uyx)) {
                         score++;
                         visite.Set(uyx, true);
+                        hash ^= hashes[i << 12 | uyx.y << 6 | uyx.x];
                     }
                 }
             }
@@ -288,7 +333,7 @@ namespace RCO2018QualA {
         }
         inline void PrintAnswer() const {
             for (int i = 0; i < 8; i++) {
-                cout << i << " \n"[i == 7];
+                cout << choosen_stages[i] << " \n"[i == 7];
             }
             command.Print();
         }
@@ -297,14 +342,18 @@ namespace RCO2018QualA {
 
     void Solve() {
         input.Read();
+        choose_stages();
+        Random rng(42);
+        for (auto&& h : hashes) h = (unsigned)rng.next();
         static State initial_state;
         static BeamSearch<State> beam_search(initial_state);
         beam_search.Search();
         beam_search.BestState().PrintAnswer();
-        //cout << beam_search.BestState().score << endl;
+        cout << beam_search.BestState().score << endl;
     }
 }
 
 int main() {
     RCO2018QualA::Solve();
 }
+
