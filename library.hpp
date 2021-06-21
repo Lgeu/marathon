@@ -1,8 +1,12 @@
-﻿#include<iostream>
+﻿#ifndef NAGISS_LIBRARY_HPP
+#define NAGISS_LIBRARY_HPP
+#include<iostream>
 #include<iomanip>
 #include<vector>
-#include<map>
 #include<set>
+#include<map>
+#include<unordered_set>
+#include<unordered_map>
 #include<algorithm>
 #include<numeric>
 #include<limits>
@@ -20,6 +24,18 @@
 #include<sstream>
 #include<chrono>
 #include<climits>
+#ifdef _MSC_VER
+#include<intrin0.h>
+#endif
+
+#ifdef __GNUC__
+//#pragma GCC target("avx2")
+//#pragma GCC target("sse4")
+//#pragma GCC target("sse,sse2,sse3,ssse3,sse4,popcnt,abm,mmx,avx,tune=native")
+//#pragma GCC optimize("O3")
+//#pragma GCC optimize("Ofast")
+//#pragma GCC optimize("unroll-loops")
+#endif
 
 // ========================== macroes ==========================
 
@@ -161,6 +177,9 @@ template<typename T> struct Vec2 {
 	inline double l2_norm_square() const {
 		return x * x + y * y;
 	}
+	inline T l1_norm() const {
+		return std::abs(x) + std::abs(y);
+	}
 	inline double abs() const {
 		return l2_norm();
 	}
@@ -245,7 +264,6 @@ template<class T, int max_size> struct Queue {
 template<class T, int max_size> struct Stack {
 	array<T, max_size> data;
 	int right;
-
 	inline Stack() : data(), right(0) {}
 	inline Stack(const int n) : data(), right(0) { resize(n); }
 	inline Stack(const int n, const T& val) : data(), right(0) { resize(n, val); }
@@ -326,8 +344,14 @@ template<class T, int max_size> struct Stack {
 	inline T* begin() {
 		return (T*)data.data();
 	}
+	inline const T* begin() const {
+		return (const T*)data.data();
+	}
 	inline T* end() {
 		return (T*)data.data() + right;
+	}
+	inline const T* end() const {
+		return (const T*)data.data() + right;
 	}
 	inline T* front() {
 		ASSERT(right > 0, "no data.");
@@ -360,3 +384,42 @@ template<typename T> inline void deduplicate(vector<T>& vec) {
 template<typename T> inline int search_sorted(const vector<T>& vec, const T& a) {
 	return lower_bound(vec.begin(), vec.end(), a) - vec.begin();
 }
+
+
+// popcount  // SSE 4.2 を使うべき
+inline int popcount(const unsigned int& x) {
+#ifdef _MSC_VER
+	return (int)__popcnt(x);
+#else
+	return __builtin_popcount(x);
+#endif
+}
+inline int popcount(const unsigned long long& x) {
+#ifdef _MSC_VER
+	return (int)__popcnt64(x);
+#else
+	return __builtin_popcountll(x);
+#endif
+}
+
+// x >> n & 1 が 1 になる最小の n ( x==0 は未定義 )
+inline int CountRightZero(const unsigned int& x) {
+#ifdef _MSC_VER
+	unsigned long r;
+	_BitScanForward(&r, x);
+	return (int)r;
+#else
+	return __builtin_ctz(x);
+#endif
+}
+inline int CountRightZero(const unsigned long long& x) {
+#ifdef _MSC_VER
+	unsigned long r;
+	_BitScanForward64(&r, x);
+	return (int)r;
+#else
+	return __builtin_ctzll(x);
+#endif
+}
+
+#endif  // NAGISS_LIBRARY_HPP
