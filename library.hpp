@@ -18,6 +18,7 @@
 #include<array>
 #include<random>
 #include<utility>
+#include<cstdio>
 #include<cstdlib>
 #include<ctime>
 #include<string>
