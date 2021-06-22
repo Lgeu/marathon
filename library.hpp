@@ -60,7 +60,7 @@
 #endif
 
 #define ASSERT_RANGE(value, left, right) \
-    ASSERT((left <= value) && (value < right), \
+	ASSERT((left <= value) && (value < right), \
 		"`%s` (%d) is out of range [%d, %d)", #value, value, left, right)
 
 #define CHECK(var) do{ std::cout << #var << '=' << var << endl; } while (false)
@@ -354,11 +354,19 @@ template<class T, int max_size> struct Stack {
 	inline const T* end() const {
 		return (const T*)data.data() + right;
 	}
-	inline T* front() {
+	inline T& front() {
+		ASSERT(right > 0, "no data.");
+		return data[0];
+	}
+	const inline T& front() const {
 		ASSERT(right > 0, "no data.");
 		return data[0];
 	}
 	inline T& back() {
+		ASSERT(right > 0, "no data.");
+		return data[right - 1];
+	}
+	const inline T& back() const {
 		ASSERT(right > 0, "no data.");
 		return data[right - 1];
 	}
