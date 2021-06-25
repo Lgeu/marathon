@@ -1,0 +1,96 @@
+<!DOCTYPE HTML>
+<html lang="">
+<!-- 参考: https://qiita.com/yohm/items/586690bf36efa0838e37 -->
+<style>
+    body {
+        background-color: #fdfdfd;
+        margin: 12px;
+    }
+    input {
+        width: 600px;
+    }
+</style>
+<link href="https://fonts.googleapis.com/css?family=Roboto Mono" rel="stylesheet">
+<head>
+    <meta charset="UTF-8">
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <title>Chart.js</title>
+</head>
+<body>
+<div class="chart-container" style="position: relative; height:40vh; width:80vw">
+    <canvas id="myChart"></canvas>
+</div>
+入力:
+<div class="slidecontainer" id="sliders">
+    <input type="range" min="-15" max="15" value="0" step="0.01" class="slider" id="slider_a">a : <span id="val_a">0</span><br>
+    <input type="range" min="0" max="3" value="0" step="0.01" class="slider" id="slider_b">b : <span id="val_b">0</span><br>
+</div>
+<div><pre>
+inline double sigmoid(const double& a, const double& x) {
+    return 1.0 / (1.0 + exp(-a * x));
+}
+
+inline double monotonically_increasing_function(const double& a, const double& b, const double& x) {
+    if (a == 0) return x;
+    const double x_left = a > 0 ? -b - 0.5 : b - 0.5;
+    const double x_right = x_left + 1.0;
+    const double left = sigmoid(a, x_left);
+    const double right = sigmoid(a, x_right);
+    const double y = sigmoid(a, x + x_left);
+    return (y - left) / (right - left);
+}
+</pre></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.js"></script>
+<script>
+    function sigmoid(a, x){
+        return 1.0 / (1.0 + Math.exp(-a * x));
+    }
+    function monotonically_increasing_function(a, b, x){
+        if(a===0.0) return x;
+        const x_left = a > 0.0 ? -b - 0.5 : b - 0.5;
+        const x_right = x_left + 1.0;
+        const left = sigmoid(a, x_left);
+        const right = sigmoid(a, x_right);
+        const y = sigmoid(a, x + x_left);
+        return (y - left) / (right - left)
+    }
+    function calc_ys(xs, a, b) {
+        return xs.map(x => monotonically_increasing_function(a, b, x));
+    }
+
+    const ctx = document.getElementById("myChart").getContext('2d');
+    const xs = [];
+    for(let i=0; i<=100; i++) { xs.push(i*0.01); }
+    let myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: xs,
+            datasets: [{
+                label: 'monotonically_increasing_function',
+                data: calc_ys(xs, 0, 0)
+            }]
+        },
+        options: {
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        min:0, max:1
+                    }
+                }]
+            }
+        }
+    });
+
+    var sliders = document.getElementById("sliders");
+    sliders.addEventListener("input", function() {
+        let a = document.getElementById("slider_a").value;
+        let b = document.getElementById("slider_b").value;
+        document.getElementById("val_a").textContent = a;
+        document.getElementById("val_b").textContent = b;
+        myChart.data.datasets[0].data = calc_ys(xs, Number(a), Number(b));
+        myChart.update();
+    }, false);
+
+</script>
+</body>
+</html>
