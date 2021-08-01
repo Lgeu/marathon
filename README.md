@@ -41,3 +41,8 @@ jupyter notebook の実行
 ```bash
 jupyter notebook --ip=*
 ```
+
+### TODO
+- Hungry Geese で使った NN を整理する
+  - 学習 https://github.com/Lgeu/hungry_geese/blob/master/nagiss/rl/notebooks/038_train/038_train.ipynb
+  - 推論 https://github.com/Lgeu/hungry_geese/blob/master/KKT89/src/Evaluator2.hpp

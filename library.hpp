@@ -261,7 +261,7 @@ template<class T, int max_size> struct Queue {
 };
 
 
-// スタック
+// スタック  // コンストラクタ呼ぶタイミングとかが考えられてなくて良くない
 template<class T, int max_size> struct Stack {
 	array<T, max_size> data;
 	int right;
@@ -269,7 +269,7 @@ template<class T, int max_size> struct Stack {
 	inline Stack(const int n) : data(), right(0) { resize(n); }
 	inline Stack(const int n, const T& val) : data(), right(0) { resize(n, val); }
 	inline Stack(initializer_list<T> init) :
-		data(init.begin(), init.end()), right(init.size()) {}
+		data(init.begin(), init.end()), right(init.size()) {}  // これ長さが最大じゃないと動かない
 	inline Stack(const Stack& rhs) : data(), right(rhs.right) {  // コピー
 		for (int i = 0; i < right; i++) {
 			data[i] = rhs.data[i];
@@ -314,6 +314,35 @@ template<class T, int max_size> struct Stack {
 	}
 	inline void clear() {
 		right = 0;
+	}
+	inline void insert(const int& idx, const T& value) {
+		ASSERT_RANGE(idx, 0, right + 1);
+		ASSERT_RANGE(right, 0, max_size);
+		int i = right;
+		right++;
+		while (i != idx) {
+			data[i] = data[i - 1];
+			i--;
+		}
+		data[idx] = value;
+	}
+	inline void del(const int& idx) {
+		ASSERT_RANGE(idx, 0, right);
+		right--;
+		for (int i = idx; i < right; i++) {
+			data[i] = data[i + 1];
+		}
+	}
+	inline int index(const T& value) const {
+		for (int i = 0; i < right; i++) {
+			if (value == data[i]) return i;
+		}
+		return -1;
+	}
+	inline void remove(const T& value) {
+		int idx = index(value);
+		ASSERT(idx != -1, "not contain the value.");
+		del(idx);
 	}
 	inline void resize(const int& sz) {
 		ASSERT_RANGE(sz, 0, max_size + 1);
@@ -370,7 +399,12 @@ template<class T, int max_size> struct Stack {
 		ASSERT(right > 0, "no data.");
 		return data[right - 1];
 	}
-
+	inline bool contains(const T& value) const {
+		for (const auto& dat : *this) {
+			if (value == dat) return true;
+		}
+		return false;
+	}
 	inline vector<T> ToVector() {
 		return vector<T>(begin(), end());
 	}
