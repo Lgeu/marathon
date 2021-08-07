@@ -46,3 +46,7 @@ jupyter notebook --ip=*
 - Hungry Geese で使った NN を整理する
   - 学習 https://github.com/Lgeu/hungry_geese/blob/master/nagiss/rl/notebooks/038_train/038_train.ipynb
   - 推論 https://github.com/Lgeu/hungry_geese/blob/master/KKT89/src/Evaluator2.hpp
+- Stack のコンストラクタとかをいい感じにする
+- Vec2 に 4 方向列挙するやつと方向を DRUL に変換するやつを足す
+- 焼きなましとかがなんか使いにくいのでどうにかする
+
